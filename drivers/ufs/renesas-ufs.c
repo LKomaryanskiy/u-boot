@@ -13,6 +13,7 @@
 #include <linux/delay.h>
 #include <linux/iopoll.h>
 #include <ufs.h>
+#include <reset.h>
 
 #include "ufs.h"
 
@@ -312,6 +313,7 @@ static int rcar_ufs_init(struct ufs_hba *hba)
 {
 	int ret;
 	struct clk clk;
+	struct reset_ctl reset_ctl;
 	const struct ufs_renesas_init_param *p;
 
 	ret = clk_get_by_index(hba->dev, 0, &clk);
@@ -323,6 +325,24 @@ static int rcar_ufs_init(struct ufs_hba *hba)
 	ret = clk_enable(&clk);
 	if (ret) {
 		dev_err(hba->dev, "failed to enable host clock\n");
+		return ret;
+	}
+
+	ret = reset_get_by_index(hba->dev, 0, &reset_ctl);
+	if (ret) {
+		dev_err(hba->dev, "failed to get UFS reset signal\n");
+		return ret;
+	}
+
+	ret = reset_assert(&reset_ctl);
+	if (ret) {
+		dev_err(hba->dev, "failed to assert UFS reset signal\n");
+		return ret;
+	}
+
+	ret = reset_deassert(&reset_ctl);
+	if (ret) {
+		dev_err(hba->dev, "failed to deassert UFS reset signal\n");
 		return ret;
 	}
 
